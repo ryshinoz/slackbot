@@ -67,8 +67,18 @@ This bot demonstrates many of the core features of Botkit:
 var Botkit = require('botkit')
 var os = require('os');
 
+var redis = require('botkit-storage-redis');
+var redisURL = url.parse(process.env.REDISCLOUD_URL);
+var redisStorage = redis({
+    namespace: 'botkit-example',
+    host: redisURL.hostname,
+    port: redisURL.port,
+    auth_pass: redisURL.auth.split(":")[1]
+});
+
 var controller = Botkit.slackbot({
   debug: false,
+  storage: redisStorage
 });
 
 var bot = controller.spawn(

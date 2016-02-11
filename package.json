@@ -17,6 +17,7 @@
     "node": "5.5.0"
   },
   "dependencies": {
-    "botkit": "0.0.5"
+    "botkit": "0.0.5",
+    "botkit-storage-redis": "^1.0.1"
   }
 }
