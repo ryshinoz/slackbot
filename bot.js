@@ -66,6 +66,7 @@ This bot demonstrates many of the core features of Botkit:
 
 var Botkit = require('botkit')
 var os = require('os');
+var url = require('url');
 
 var redis = require('botkit-storage-redis');
 var redisURL = url.parse(process.env.REDISCLOUD_URL);
@@ -193,6 +194,7 @@ function formatUptime(uptime) {
 }
 
 // To keep Heroku's free dyno awake
+var http = require('http');
 http.createServer(function(request, response) {
     response.writeHead(200, {'Content-Type': 'text/plain'});
     response.end('Ok, dyno is awake.');
