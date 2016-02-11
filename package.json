@@ -19,6 +19,8 @@
   "dependencies": {
     "botkit": "0.0.5",
     "botkit-storage-redis": "^1.0.1",
-    "github": "^0.2.4"
+    "githubot": "^1.0.0",
+    "moment": "^2.11.2",
+    "moment-timezone": "^0.5.0"
   }
 }

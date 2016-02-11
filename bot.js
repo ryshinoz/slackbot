@@ -88,139 +88,51 @@ var bot = controller.spawn(
   }
 ).startRTM();
 
+var moment = require('moment-timezone');
+var github = require('githubot');
+var assignees = process.env.GITHUB_ASSIGNEES.split(',');
+var repository = process.env.GITHUB_REPOSITORY;
 
-controller.hears(['hello','hi'],'direct_message,direct_mention,mention',function(bot,message) {
+controller.hears(['issues (.*)'], 'direct_mention', function(bot, message) {
+    var matches = message.text.match(/issues (.*)/i);
+    var command = matches[1];
 
-  bot.api.reactions.add({
-    timestamp: message.ts,
-    channel: message.channel,
-    name: 'robot_face',
-  },function(err,res) {
-    if (err) {
-      bot.botkit.log("Failed to add emoji reaction :(",err);
+    // 昨日作成されたIssue
+    if (command == 'report') {
+        var yesterday = moment().tz('Asia/Tokyo').startOf('day').add(-1, 'days');
+        github.get('https://api.github.com/repos/' + repository + '/issues?per_page=100&since=' + yesterday.toISOString(), function(issues) {
+                var text = 'Issue that was created yesterday (' + yesterday.format('YYYY/MM/DD') + ') : ' + issues.length + '\n\n';
+                var texts = [];
+
+                issues.forEach(function(issue) {
+                    texts.push('[' + issue.number + '] ' + issue.title + ' (' + issue.user.login + ')');
+                });
+                text += texts.join('\n');
+                bot.reply(message, text);
+        });
     }
-  });
 
+    // アサインされたIssue
+    if (command == 'assign') {
+        assign_issues = {};
+        assignees.forEach(function(assignee) {
+            assign_issues[assignee] = [];
+        });
+        github.get('https://api.github.com/repos/' + repository + '/issues?per_page=100', function(issues) {
+                var text = '';
+                issues.forEach(function(issue) {
+                    if (issue.assignee && issue.assignee.login in assign_issues) {
+                        assign_issues[issue.assignee.login].push('[' + issue.number + '] ' + issue.title);
+                    }
+                });
 
-  controller.storage.users.get(message.user,function(err,user) {
-    if (user && user.name) {
-      bot.reply(message,"Hello " + user.name+"!!");
-    } else {
-      bot.reply(message,"Hello.");
+                for (assignee in assign_issues) {
+                    text += assignee + ' : ' + assign_issues[assignee].length + '\n' + assign_issues[assignee].join('\n') + '\n\n';
+                }
+
+                bot.reply(message, text);
+         });
     }
-  });
-})
-
-controller.hears(['call me (.*)'],'direct_message,direct_mention,mention',function(bot,message) {
-  var matches = message.text.match(/call me (.*)/i);
-  var name = matches[1];
-  controller.storage.users.get(message.user,function(err,user) {
-    if (!user) {
-      user = {
-        id: message.user,
-      }
-    }
-    user.name = name;
-    controller.storage.users.save(user,function(err,id) {
-      bot.reply(message,"Got it. I will call you " + user.name + " from now on.");
-    })
-  })
-});
-
-controller.hears(['what is my name','who am i'],'direct_message,direct_mention,mention',function(bot,message) {
-
-  controller.storage.users.get(message.user,function(err,user) {
-    if (user && user.name) {
-      bot.reply(message,"Your name is " + user.name);
-    } else {
-      bot.reply(message,"I don't know yet!");
-    }
-  })
-});
-
-
-controller.hears(['shutdown'],'direct_message,direct_mention,mention',function(bot,message) {
-
-  bot.startConversation(message,function(err,convo) {
-    convo.ask("Are you sure you want me to shutdown?",[
-      {
-        pattern: bot.utterances.yes,
-        callback: function(response,convo) {
-          convo.say("Bye!");
-          convo.next();
-          setTimeout(function() {
-            process.exit();
-          },3000);
-        }
-      },
-      {
-        pattern: bot.utterances.no,
-        default:true,
-        callback: function(response,convo) {
-          convo.say("*Phew!*");
-          convo.next();
-        }
-      }
-    ])
-  })
-})
-
-
-controller.hears(['uptime','identify yourself','who are you','what is your name'],'direct_message,direct_mention,mention',function(bot,message) {
-
-  var hostname = os.hostname();
-  var uptime = formatUptime(process.uptime());
-
-  bot.reply(message,':robot_face: I am a bot named <@' + bot.identity.name +'>. I have been running for ' + uptime + ' on ' + hostname + ".");
-
-})
-
-function formatUptime(uptime) {
-  var unit = 'second';
-  if (uptime > 60) {
-    uptime = uptime / 60;
-    unit = 'minute';
-  }
-  if (uptime > 60) {
-    uptime = uptime / 60;
-    unit = 'hour';
-  }
-  if (uptime != 1) {
-    unit = unit +'s';
-  }
-
-  uptime = uptime + ' ' + unit;
-  return uptime;
-}
-
-var GitHubApi = require("github");
-var github = new GitHubApi({
-    // required
-    version: "3.0.0",
-    // optional
-    debug: false,
-    protocol: "https",
-    host: "api.github.com", // should be api.github.com for GitHub
-    pathPrefix: "/api/v3", // for some GHEs; none for GitHub
-    timeout: 5000,
-    headers: {
-        "user-agent": "slackbot[https://github.com/ryshinoz/slackbot]" // GitHub is happy with a unique user agent
-    }
-});
-github.authenticate({
-	type: "oauth",
-	token: process.env.GITHUB_TOKEN
-})
-
-controller.hears(['issues'], 'direct_mention', function(bot, message) {
-	var msg = {
-		user: process.env.GITHUB_USER,
-		repo: process.env.GITHUB_REPOSITORY,
-		state: 'open'
-	}
-	github.issues.repoIssues(msg, function(err, res) {
-		bot.botkit.log(res);
-    })
 })
 
 // To keep Heroku's free dyno awake
