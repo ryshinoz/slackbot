@@ -193,6 +193,36 @@ function formatUptime(uptime) {
   return uptime;
 }
 
+var GitHubApi = require("github");
+var github = new GitHubApi({
+    // required
+    version: "3.0.0",
+    // optional
+    debug: false,
+    protocol: "https",
+    host: "api.github.com", // should be api.github.com for GitHub
+    pathPrefix: "/api/v3", // for some GHEs; none for GitHub
+    timeout: 5000,
+    headers: {
+        "user-agent": "slackbot[https://github.com/ryshinoz/slackbot]" // GitHub is happy with a unique user agent
+    }
+});
+github.authenticate({
+	type: "oauth",
+	token: process.env.GITHUB_TOKEN
+})
+
+controller.hears(['issues'], 'direct_mention', function(bot, message) {
+	var msg = {
+		user: process.env.GITHUB_USER,
+		repo: process.env.GITHUB_REPOSITORY,
+		state: 'open'
+	}
+	github.issues.repoIssues(msg, function(err, res) {
+		bot.botkit.log(res);
+    })
+})
+
 // To keep Heroku's free dyno awake
 var http = require('http');
 http.createServer(function(request, response) {
